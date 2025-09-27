@@ -1,15 +1,16 @@
-# yet another idle rpg
-###### by Miktaew
+# yet-another-another-idle-rpg
+###### Created by Miktaew
 
 
 ### Still in development.
 
-Official repo: https://github.com/miktaew/yet-another-idle-rpg  
-Official release: https://miktaew.github.io/yet-another-idle-rpg/  
+Original repo: https://github.com/miktaew/yet-another-idle-rpg  
+Original release: https://miktaew.github.io/yet-another-idle-rpg/  
+Creator: https://github.com/miktaew
   
   
-Dev repo: https://github.com/miktaew/yet-another-idle-rpg-dev  
-Dev release: https://miktaew.github.io/yet-another-idle-rpg-dev/  
+This is a modified version of "yet another idle rpg" by Miktaew.
+All credit goes to the original creator: https://github.com/miktaew
 
 ---
 Be warned, the game balance may be not the greatest.
