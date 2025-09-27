@@ -6,3 +6,4 @@ package.json
 .eslintrc.json
 .dependency-cruiser.js
 dependency-graph.svg
+.env
