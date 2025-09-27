@@ -79,7 +79,6 @@ class ItemRecipe extends Recipe {
 
     get_availability() {
         let ammount = Infinity;
-        let materials = [];
         for(let i = 0; i < this.materials.length; i++) {
             if(this.materials[i].material_id) {
                 const key = item_templates[this.materials[i].material_id].getInventoryKey();
@@ -102,11 +101,10 @@ class ItemRecipe extends Recipe {
 
                 mats = mats.sort((a,b) => a.item.getValue()-b.item.getValue());
                 ammount = Math.floor(Math.min(mats[0].count / this.materials[i].count, ammount));
-                materials.push(mats[0].item.id);
             }
         }
         
-        return {available_ammount: ammount, materials};
+        return {available_ammount: ammount};
     }
 }
 
@@ -125,7 +123,16 @@ class ComponentRecipe extends ItemRecipe{
         this.component_type = component_type;
         this.item_type = item_type;
         this.getResult = function(material, station_tier = 1){
-            const result = item_templates[this.materials.filter(x => x.material_id===material.id)[0].result_id];
+            if (!material || !material.id) {
+                throw new Error(`Invalid material provided to ComponentRecipe.getResult for recipe "${this.name}"`);
+            }
+            
+            const matchingMaterial = this.materials.find(x => x.material_id === material.id);
+            if (!matchingMaterial) {
+                throw new Error(`No matching material found for material ID "${material.id}" in recipe "${this.name}"`);
+            }
+            
+            const result = item_templates[matchingMaterial.result_id];
             //return based on material used
             let quality = this.get_quality((station_tier-result.component_tier) || 0);
             if(result.tags["clothing"]) {

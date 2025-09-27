@@ -143,26 +143,27 @@ function add_to_buying_list(selected_item) {
     const present_item = to_buy.items.find(a => a.item_key === selected_item.item_key);
     
     let item_count_in_trader = traders[current_trader].inventory[selected_item.item_key].count;
+    let count_to_add = selected_item.count;
 
     if(present_item) { //there's already some in inventory
-        if(item_count_in_trader - present_item.count < selected_item.count) {
+        if(item_count_in_trader - present_item.count < count_to_add) {
             //trying to buy more than trader has left, so just put all in the buy list
-            selected_item.count = item_count_in_trader - present_item.count;
+            count_to_add = item_count_in_trader - present_item.count;
             present_item.count = item_count_in_trader;
         } else {
-            present_item.count += selected_item.count;
+            present_item.count += count_to_add;
         }
 
     } else { 
-        if(item_count_in_trader < selected_item.count) { 
+        if(item_count_in_trader < count_to_add) { 
             //trader has not enough: buy all available
-            selected_item.count = item_count_in_trader;
+            count_to_add = item_count_in_trader;
         }
 
-        to_buy.items.push(selected_item);
+        to_buy.items.push({...selected_item, count: count_to_add});
     }
 
-    const value = get_item_value(selected_item, true);
+    const value = get_item_value({...selected_item, count: count_to_add}, true);
     to_buy.value += value;
     return -value;
 }
@@ -175,14 +176,16 @@ function add_to_buying_list(selected_item) {
 function remove_from_buying_list(selected_item) {
 
     const present_item = to_buy.items.find(a => a.item_key === selected_item.item_key);
+    let count_to_remove = selected_item.count;
+    
     if(present_item?.count > selected_item.count) { //there's enough
         present_item.count -= selected_item.count;
     } else { //there's not enough, remove them all
-        selected_item.count = present_item.count;
+        count_to_remove = present_item.count;
         to_buy.items.splice(to_buy.items.indexOf(present_item),1);
     }
 
-    const value = get_item_value(selected_item, true);
+    const value = get_item_value({...selected_item, count: count_to_remove}, true);
     to_buy.value -= value;
     return value;
 }
@@ -196,36 +199,37 @@ function add_to_selling_list(selected_item) {
     const present_item = to_sell.items.find(a => a.item_key === selected_item.item_key);
     //find if item is already present in the sell list
     let item_count_in_player = character.inventory[selected_item.item_key].count;
+    let count_to_add = selected_item.count;
 
     if(present_item) {
         //item present in the list -> increase its count, up to what player has in inventory
 
-        if(item_count_in_player - present_item.count < selected_item.count) {
+        if(item_count_in_player - present_item.count < count_to_add) {
             //trying to sell more that remains in inventory, so just add everything
-            selected_item.count = item_count_in_player - present_item.count;
+            count_to_add = item_count_in_player - present_item.count;
             present_item.count = item_count_in_player;
         } else {
-            present_item.count += selected_item.count;
+            present_item.count += count_to_add;
         }
 
     } else { 
-        if(item_count_in_player < selected_item.count) { 
+        if(item_count_in_player < count_to_add) { 
             //character has not enough: sell all available
-            selected_item.count = item_count_in_player;
+            count_to_add = item_count_in_player;
         }
 
-        to_sell.items.push(selected_item);
+        to_sell.items.push({...selected_item, count: count_to_add});
     }
 
     let {id, components, quality} = JSON.parse(selected_item.item_key);
     let value;
 
     if(id && item_templates[id].saturates_market) {
-        value = item_templates[id].getValueOfMultiple({additional_count_of_sold: (present_item?.count - selected_item.count || 0), count: selected_item.count});
+        value = item_templates[id].getValueOfMultiple({additional_count_of_sold: (present_item?.count - count_to_add || 0), count: count_to_add});
     } else if(id && !item_templates[id].saturates_market) { 
-        value = item_templates[id].getValue(quality) * selected_item.count;
+        value = item_templates[id].getValue(quality) * count_to_add;
     } else {
-        value = getEquipmentValue(components, quality) * selected_item.count;
+        value = getEquipmentValue(components, quality) * count_to_add;
     }
     
     to_sell.value += value;
