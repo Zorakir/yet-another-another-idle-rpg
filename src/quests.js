@@ -1,4 +1,5 @@
 "use strict";
+import { update_displayed_quests } from "./display.js";
 
 const quests = {};
 const active_quests = {};
@@ -85,10 +86,10 @@ const QuestManager = {
         const quest = quests[quest_id];
         if((!quest.is_finished || quest.is_repeatable) && !this.IsQuestActive(quest_id)) {
             active_quests[quest_id] = new Quest(quests[quest_id]);
+            update_displayed_quests();
         } else {
             console.error(`Cannot start quest "${quest_id}"; it's either finished and not repeatable, or already active`);
         }
-        //todo: update display if quest is not hidden
     },
 
     IsQuestActive(quest_id) {
@@ -102,7 +103,7 @@ const QuestManager = {
                 quest.is_finished = true;
             }
             delete active_quests[quest_id];
-            //todo: update display if quest is not hidden
+            update_displayed_quests();
         } else {
             console.warn(`Cannot finish quest "${quest_id}", as it's not a currently active quest!`)
         }
@@ -112,7 +113,7 @@ const QuestManager = {
         if(this.IsQuestActive(quest_id)) {
             let quest = quests[quest_id];
             quest.quest_tasks[task_index].is_finished = true;
-            //todo: update display if quest is not hidden
+            update_displayed_quests();
         } else {
             console.warn(`Cannot finish task at index ${task_index} for quest "${quest_id}", as it's not a currently active quest!`)
         }

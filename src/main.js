@@ -61,6 +61,7 @@ import { end_activity_animation,
          update_location_action_finish_button,
          update_displayed_storage_inventory,
          update_location_icon,
+         update_displayed_quests,
         } from "./display.js";
 import { compare_game_version, get_hit_chance, is_a_older_than_b, skill_consumable_tags } from "./misc.js";
 import { stances } from "./combat_stances.js";
@@ -1396,6 +1397,13 @@ function do_character_combat_action({target, attack_power, target_count}) {
 
             log_message(target.name + " was defeated", "enemy_defeated");
 
+            // Notify quest system about enemy kill
+            QuestManager.CatchQuestEvent({
+                quest_event_type: "kill",
+                quest_event_target: target.name,
+                quest_event_count: 1
+            });
+
             //gained xp multiplied by TOTAL size of enemy group raised to 1/3
             let xp_reward = target.xp_value * (current_enemies.length**0.3334);
             add_xp_to_character(xp_reward, true);
@@ -1659,6 +1667,13 @@ function get_location_rewards(location) {
     let should_return = false;
     if(location.enemy_groups_killed == location.enemy_count) { //first clear
 
+        // Notify quest system about location clear
+        QuestManager.CatchQuestEvent({
+            quest_event_type: "clear",
+            quest_event_target: location.id,
+            quest_event_count: 1
+        });
+
         if(location.is_challenge) {
             lock_location({location});
         }
@@ -1865,6 +1880,20 @@ function process_rewards({rewards = {}, source_type, source_name, is_first_clear
                 if(inform_overall) {
                     log_message(`Unlocked new recipe: ${recipes[rewards.recipes[i].category][rewards.recipes[i].subcategory][rewards.recipes[i].recipe_id].name}`);
                 }
+            }
+        }
+    }
+
+    if(rewards.quests) {
+        for(let i = 0; i < rewards.quests.length; i++) {
+            const quest_id = rewards.quests[i];
+            if(quests[quest_id]) {
+                QuestManager.StartQuest(quest_id);
+                if(inform_overall && !quests[quest_id].is_hidden) {
+                    log_message(`New quest started: ${quests[quest_id].GetQuestName()}`, "quest_started");
+                }
+            } else {
+                console.warn(`Tried to start quest "${quest_id}", but no such quest exists!`);
             }
         }
     }
@@ -2660,6 +2689,24 @@ function create_save() {
             background: document.documentElement.style.getPropertyValue('--message_background_display') !== "none",
             crafting: document.documentElement.style.getPropertyValue('--message_crafting_display') !== "none",
         };
+
+        // Save quest data
+        save_data["quests"] = {};
+        Object.keys(quests).forEach(quest_id => {
+            if(quests[quest_id].is_finished) {
+                save_data["quests"][quest_id] = {is_finished: true};
+            }
+        });
+
+        save_data["active_quests"] = {};
+        Object.keys(active_quests).forEach(quest_id => {
+            save_data["active_quests"][quest_id] = {
+                quest_tasks: active_quests[quest_id].quest_tasks.map(task => ({
+                    task_condition: task.task_condition,
+                    is_finished: task.is_finished
+                }))
+            };
+        });
 
         return JSON.stringify(save_data);
     } catch(error) {
@@ -3479,6 +3526,30 @@ function load(save_data) {
             }
         });
     }
+
+    // Load quest data
+    if(save_data.quests) {
+        Object.keys(save_data.quests).forEach(quest_id => {
+            if(quests[quest_id] && save_data.quests[quest_id].is_finished) {
+                quests[quest_id].is_finished = true;
+            }
+        });
+    }
+
+    if(save_data.active_quests) {
+        Object.keys(save_data.active_quests).forEach(quest_id => {
+            if(quests[quest_id]) {
+                QuestManager.StartQuest(quest_id);
+                
+                // Restore task progress
+                const saved_tasks = save_data.active_quests[quest_id].quest_tasks;
+                for(let i = 0; i < saved_tasks.length && i < active_quests[quest_id].quest_tasks.length; i++) {
+                    active_quests[quest_id].quest_tasks[i].task_condition = saved_tasks[i].task_condition;
+                    active_quests[quest_id].quest_tasks[i].is_finished = saved_tasks[i].is_finished;
+                }
+            }
+        });
+    }
     
 
     update_character_stats();
@@ -3491,6 +3562,9 @@ function load(save_data) {
     
     create_displayed_crafting_recipes();
     change_location(save_data["current location"]);
+
+    // Update quest display after loading
+    update_displayed_quests();
 
     //set activity if any saved
     if(save_data.current_activity) {
@@ -4069,6 +4143,10 @@ if(save_key in localStorage || (is_on_dev() && dev_save_key in localStorage)) {
     change_stance("normal");
     create_displayed_crafting_recipes();
     change_location("Village");
+
+    // Start the initial quest for new games
+    QuestManager.StartQuest("Lost memory");
+    update_displayed_quests();
 } //checks if there's an existing save file, otherwise just sets up some initial equipment
 
 document.getElementById("loading_screen").style.visibility = "hidden";
